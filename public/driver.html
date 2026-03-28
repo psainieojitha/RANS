@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0b10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ClearPath Driver</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ff1c38;
+    --amber: #ff9500;
+    --green: #00e87a;
+    --blue: #00b4ff;
+    --bg: #07080f;
+    --surface: #0e1018;
+    --surface2: #141720;
+    --border: #1e2230;
+    --text: #e8eaf0;
+    --muted: #5a5f75;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-ui); display: flex; flex-direction: column; }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .app-name { font-family: var(--font-display); font-size: 22px; letter-spacing: 2px; }
+  .app-name span { color: var(--red); }
+  .conn-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .conn-dot.ok { background: var(--green); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* MISSION TOGGLE */
+  .mission-strip {
+    padding: 12px 16px;
+    display: flex; gap: 10px;
+    flex-shrink: 0;
+  }
+  .btn {
+    flex: 1; font-family: var(--font-display); font-size: 20px; letter-spacing: 2px;
+    padding: 14px; border: none; border-radius: 12px;
+    cursor: pointer; transition: all .2s;
+  }
+  .btn-start { background: var(--red); color: #fff; }
+  .btn-start:active { opacity: .8; transform: scale(.97); }
+  .btn-stop { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .btn-stop:active { opacity: .8; }
+  .btn:disabled { opacity: .35; pointer-events: none; }
+
+  /* SPEEDOMETER */
+  .speedo-section {
+    flex-shrink: 0;
+    padding: 0 16px 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .speedo-ring {
+    width: 120px; height: 120px; flex-shrink: 0;
+    position: relative;
+  }
+  .speedo-ring svg { width: 100%; height: 100%; transform: rotate(-135deg); }
+  .speedo-ring svg circle { fill: none; stroke-width: 8; }
+  .speedo-track { stroke: var(--border); }
+  .speedo-fill { stroke: var(--red); stroke-linecap: round; transition: stroke-dashoffset .5s; }
+  .speedo-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    text-align: center;
+  }
+  .speedo-num { font-family: var(--font-display); font-size: 32px; color: var(--text); line-height: 1; }
+  .speedo-unit { font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
+  .speedo-stats { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .stat-row { display: flex; gap: 8px; }
+  .stat-mini {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .stat-mini-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .stat-mini-val { font-family: var(--font-mono); font-size: 15px; margin-top: 2px; }
+
+  /* DESTINATION */
+  .dest-card {
+    margin: 0 16px 10px;
+    background: linear-gradient(135deg, #0b1128, #0d1420);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .dest-icon { font-size: 28px; }
+  .dest-info { flex: 1; }
+  .dest-label { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .dest-name { font-weight: 700; font-size: 16px; margin-top: 2px; }
+  .dest-dist { font-family: var(--font-mono); font-size: 12px; color: var(--blue); margin-top: 2px; }
+
+  /* GPS STATUS */
+  .gps-bar {
+    margin: 0 16px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .gps-icon { font-size: 18px; }
+  .gps-info { flex: 1; }
+  .gps-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .gps-coords { font-family: var(--font-mono); font-size: 11px; color: var(--blue); margin-top: 2px; }
+  .gps-accuracy { font-size: 10px; color: var(--muted); }
+  .gps-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 4px; text-transform: uppercase;
+  }
+  .gps-badge.live { background: rgba(0,232,122,.15); color: var(--green); border: 1px solid rgba(0,232,122,.3); }
+  .gps-badge.sim  { background: rgba(255,149,0,.15); color: var(--amber); border: 1px solid rgba(255,149,0,.3); }
+  .gps-badge.err  { background: rgba(255,28,56,.15); color: var(--red); border: 1px solid rgba(255,28,56,.3); }
+
+  /* UPCOMING ALERTS */
+  .upcoming-section { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+  .sec-title { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; padding-top: 4px; }
+  .alert-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    transition: all .4s;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .alert-item.approach { border-left-color: var(--amber); background: rgba(255,149,0,.04); }
+  .alert-item.near     { border-left-color: var(--red); background: rgba(255,28,56,.05); }
+  .alert-item.imminent { border-left-color: var(--red); background: rgba(255,28,56,.1); animation: pulse .7s infinite; }
+  .alert-item.clear    { border-left-color: var(--green); background: rgba(0,232,122,.04); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+  .ai-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .ai-name { font-weight: 700; font-size: 15px; }
+  .ai-dist { font-family: var(--font-mono); font-size: 18px; }
+  .ai-dist.approach { color: var(--amber); }
+  .ai-dist.near { color: var(--red); }
+  .ai-dist.imminent { color: var(--red); }
+  .ai-dist.clear { color: var(--green); }
+  .ai-level {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 3px; margin: 4px 0;
+    display: inline-block;
+  }
+  .ai-level.approach { background: rgba(255,149,0,.2); color: var(--amber); }
+  .ai-level.near     { background: rgba(255,28,56,.2); color: var(--red); }
+  .ai-level.imminent { background: var(--red); color: #fff; }
+  .ai-level.clear    { background: rgba(0,232,122,.2); color: var(--green); }
+  .ai-msg { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* VIBRATE EFFECT */
+  .vibrating { animation: vibe .15s 3; }
+  @keyframes vibe { 0%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} 100%{transform:translateX(0)} }
+
+  /* SIM mode banner */
+  .sim-banner {
+    background: rgba(255,149,0,.12);
+    border-top: 1px solid rgba(255,149,0,.25);
+    padding: 6px 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--amber);
+    text-align: center; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="app-name">Clear<span>Path</span> Driver</div>
+  <div class="conn-badge">
+    <div class="conn-dot" id="connDot"></div>
+    <span id="connLabel">CONNECTING...</span>
+  </div>
+</div>
+
+<!-- SIM BANNER -->
+<div class="sim-banner" id="simBanner" style="display:none">⚠ GPS SIMULATION MODE — Using demo route</div>
+
+<!-- MISSION BUTTONS -->
+<div class="mission-strip">
+  <button class="btn btn-start" id="btnStart" onclick="startMission()">▶ START MISSION</button>
+  <button class="btn btn-stop"  id="btnStop"  onclick="stopMission()" disabled>■ STOP</button>
+</div>
+
+<!-- SPEEDOMETER -->
+<div class="speedo-section">
+  <div class="speedo-ring">
+    <svg viewBox="0 0 100 100">
+      <circle class="speedo-track" cx="50" cy="50" r="42" stroke-dasharray="263" stroke-dashoffset="66"/>
+      <circle class="speedo-fill" id="speedoFill" cx="50" cy="50" r="42"
+        stroke-dasharray="263" stroke-dashoffset="263"/>
+    </svg>
+    <div class="speedo-center">
+      <div class="speedo-num" id="speedoNum">0</div>
+      <div class="speedo-unit">KM/H</div>
+    </div>
+  </div>
+  <div class="speedo-stats">
+    <div class="stat-row">
+      <div class="stat-mini">
+        <div class="stat-mini-label">ETA</div>
+        <div class="stat-mini-val" id="statETA">--:--</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Distance</div>
+        <div class="stat-mini-val" id="statDist">-- km</div>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-mini">
+        <div class="stat-mini-label">Alerts</div>
+        <div class="stat-mini-val" id="statAlerts" style="color:var(--red)">0</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Status</div>
+        <div class="stat-mini-val" id="statStatus" style="color:var(--muted)">IDLE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DESTINATION -->
+<div class="dest-card">
+  <div class="dest-icon">🏥</div>
+  <div class="dest-info">
+    <div class="dest-label">Destination</div>
+    <div class="dest-name">Manipal Hospital, Bengaluru</div>
+    <div class="dest-dist" id="destDistLine">Waiting for GPS...</div>
+  </div>
+</div>
+
+<!-- GPS STATUS -->
+<div class="gps-bar">
+  <div class="gps-icon">📡</div>
+  <div class="gps-info">
+    <div class="gps-label">GPS Position</div>
+    <div class="gps-coords" id="gpsCoords">Acquiring...</div>
+    <div class="gps-accuracy" id="gpsAccuracy"></div>
+  </div>
+  <div class="gps-badge sim" id="gpsBadge">SIM</div>
+</div>
+
+<!-- UPCOMING INTERSECTIONS -->
+<div class="upcoming-section">
+  <div class="sec-title">🚦 Intersection Alerts</div>
+  <div id="alertList">
+    <div style="text-align:center;padding:30px 0;color:var(--muted);font-size:13px">
+      Start mission to receive alerts
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+const SERVER_URL = window.location.origin;
+const DEMO_ROUTE = [
+  [12.9641,77.5953],[12.9638,77.5960],[12.9633,77.5968],[12.9627,77.5978],
+  [12.9620,77.5990],[12.9614,77.6003],[12.9611,77.6016],[12.9613,77.6030],
+  [12.9619,77.6042],[12.9628,77.6054],[12.9640,77.6065],[12.9655,77.6072],
+  [12.9670,77.6078],[12.9686,77.6083],[12.9700,77.6088],[12.9714,77.6093],
+  [12.9725,77.6103],[12.9733,77.6118],[12.9740,77.6138],[12.9745,77.6160],
+  [12.9748,77.6183],[12.9750,77.6208],[12.9753,77.6233],[12.9757,77.6258],
+  [12.9760,77.6283],[12.9763,77.6308],[12.9766,77.6333],[12.9769,77.6358],
+  [12.9772,77.6383],[12.9775,77.6408],
+];
+const DEST = { lat: 12.9775, lng: 77.6408 };
+
+// ── STATE ─────────────────────────────────────────────────────
+let socket = null;
+let simInterval = null;
+let simIdx = 0;
+let missionActive = false;
+let alertsReceived = 0;
+let useRealGPS = false;
+let watchId = null;
+const activeAlerts = {};
+
+// ── SOCKET CONNECT ────────────────────────────────────────────
+function connectSocket() {
+  socket = io(SERVER_URL, { reconnection: true, reconnectionDelay: 1000 });
+
+  socket.on('connect', () => {
+    socket.emit('join:driver');
+    setConn(true);
+  });
+  socket.on('disconnect', () => setConn(false));
+
+  socket.on('mission:state', (state) => {
+    missionActive = state.status === 'active';
+    updateButtons();
+    document.getElementById('statStatus').textContent = state.status.toUpperCase();
+    document.getElementById('statStatus').style.color =
+      state.status === 'active' ? 'var(--green)' :
+      state.status === 'paused' ? 'var(--amber)' : 'var(--muted)';
+  });
+
+  socket.on('alerts:new', (alerts) => {
+    alerts.forEach(handleAlert);
+  });
+
+  socket.on('mission:complete', () => {
+    stopMission();
+    document.getElementById('statStatus').textContent = 'ARRIVED ✓';
+    document.getElementById('statStatus').style.color = 'var(--green)';
+    vibrate([400, 100, 400]);
+  });
+}
+
+function setConn(ok) {
+  document.getElementById('connDot').classList.toggle('ok', ok);
+  document.getElementById('connLabel').textContent = ok ? 'CONNECTED' : 'RECONNECTING...';
+}
+
+// ── MISSION ───────────────────────────────────────────────────
+function startMission() {
+  if (missionActive) return;
+  missionActive = true;
+  alertsReceived = 0;
+  simIdx = 0;
+  document.getElementById('alertList').innerHTML = '';
+  document.getElementById('statAlerts').textContent = '0';
+  document.getElementById('statStatus').textContent = 'ACTIVE';
+  document.getElementById('statStatus').style.color = 'var(--green)';
+
+  socket?.emit('mission:start');
+  tryRealGPS();
+  updateButtons();
+}
+
+function stopMission() {
+  missionActive = false;
+  clearInterval(simInterval);
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  socket?.emit('mission:pause');
+  document.getElementById('statStatus').textContent = 'STOPPED';
+  document.getElementById('statStatus').style.color = 'var(--muted)';
+  updateButtons();
+}
+
+function updateButtons() {
+  document.getElementById('btnStart').disabled = missionActive;
+  document.getElementById('btnStop').disabled = !missionActive;
+}
+
+// ── GPS ───────────────────────────────────────────────────────
+function tryRealGPS() {
+  if (!navigator.geolocation) { startSim(); return; }
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      useRealGPS = true;
+      document.getElementById('simBanner').style.display = 'none';
+      document.getElementById('gpsBadge').textContent = 'LIVE';
+      document.getElementById('gpsBadge').className = 'gps-badge live';
+      sendGPS(pos.coords.latitude, pos.coords.longitude, pos.coords.speed * 3.6 || 40, 0, pos.coords.accuracy);
+    },
+    () => { if (!useRealGPS) startSim(); },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 5000 }
+  );
+  setTimeout(() => { if (!useRealGPS) startSim(); }, 5000);
+}
+
+function startSim() {
+  document.getElementById('simBanner').style.display = 'block';
+  document.getElementById('gpsBadge').textContent = 'SIM';
+  document.getElementById('gpsBadge').className = 'gps-badge sim';
+  simInterval = setInterval(simTick, 700);
+}
+
+function simTick() {
+  if (!missionActive || simIdx >= DEMO_ROUTE.length - 1) {
+    if (simIdx >= DEMO_ROUTE.length - 1) {
+      socket?.emit('mission:pause');
+      stopMission();
+    }
+    return;
+  }
+  simIdx++;
+  const [lat, lng] = DEMO_ROUTE[simIdx];
+  const speed = 45 + Math.sin(simIdx * 0.9) * 12 + Math.random() * 5;
+  sendGPS(lat, lng, speed, 0, 5);
+}
+
+function sendGPS(lat, lng, speed, heading, accuracy) {
+  if (!missionActive) return;
+  socket?.emit('driver:gps', { lat, lng, speed, heading, accuracy });
+
+  // Update UI
+  document.getElementById('gpsCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  document.getElementById('gpsAccuracy').textContent = accuracy ? `±${Math.round(accuracy)}m accuracy` : '';
+
+  const spd = Math.round(speed || 0);
+  document.getElementById('speedoNum').textContent = spd;
+  const arc = 263 - (263 * 0.75 * Math.min(spd / 120, 1));
+  document.getElementById('speedoFill').style.strokeDashoffset = arc;
+
+  // Distance
+  const distM = haversine(lat, lng, DEST.lat, DEST.lng);
+  const distKm = (distM / 1000).toFixed(1);
+  document.getElementById('statDist').textContent = distKm + ' km';
+  document.getElementById('destDistLine').textContent = distKm + ' km remaining';
+
+  // ETA
+  const speedMs = (spd / 3.6) || 10;
+  const secsLeft = Math.round(distM / speedMs);
+  const mm = Math.floor(secsLeft / 60).toString().padStart(2,'0');
+  const ss = (secsLeft % 60).toString().padStart(2,'0');
+  document.getElementById('statETA').textContent = mm + ':' + ss;
+}
+
+// ── ALERTS ────────────────────────────────────────────────────
+function handleAlert(alert) {
+  const prev = activeAlerts[alert.intersectionId];
+  activeAlerts[alert.intersectionId] = alert;
+
+  if (alert.level !== prev?.level) {
+    alertsReceived++;
+    document.getElementById('statAlerts').textContent = alertsReceived;
+
+    // Vibrate on level changes
+    if (alert.level === 'imminent') vibrate([200, 50, 200, 50, 400]);
+    else if (alert.level === 'near')     vibrate([150, 50, 150]);
+    else if (alert.level === 'approach') vibrate([80]);
+  }
+
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alertList');
+  const levels = ['imminent', 'near', 'approach', 'clear'];
+  const sorted = Object.values(activeAlerts).sort((a, b) =>
+    levels.indexOf(a.level) - levels.indexOf(b.level)
+  );
+
+  list.innerHTML = sorted.map(a => {
+    if (a.level === 'none') return '';
+    const distText = a.level === 'clear' ? '✓ PASSED' : a.distance + 'm';
+    return `<div class="alert-item ${a.level}">
+      <div class="ai-top">
+        <div class="ai-name">🚦 ${a.intersectionName}</div>
+        <div class="ai-dist ${a.level}">${distText}</div>
+      </div>
+      <div class="ai-level ${a.level}">${a.level}</div>
+      <div class="ai-msg">${a.message}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────
+connectSocket();
+</script>
+</body>
+</html>

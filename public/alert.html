@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#07080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ClearPath Alert</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #ff1c38; --amber: #ff9500; --green: #00e87a;
+    --bg: #07080f; --surface: #0e1018; --surface2: #141720;
+    --border: #1e2230; --text: #e8eaf0; --muted: #5a5f75;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-ui); display:flex; flex-direction:column; overflow:hidden; }
+
+  /* HEADER */
+  .header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  }
+  .logo { font-family:var(--font-display); font-size:24px; letter-spacing:2px; }
+  .logo em { color:var(--red); font-style:normal; }
+  .sub { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-top:-3px; }
+  .conn-row { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .dot.live { background:var(--green); animation:blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  /* STANDBY SCREEN */
+  #standbyScreen {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:24px; text-align:center;
+  }
+  .standby-icon { font-size:72px; margin-bottom:16px; opacity:.5; animation:float 3s infinite ease-in-out; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .standby-title { font-family:var(--font-display); font-size:32px; letter-spacing:3px; margin-bottom:8px; }
+  .standby-desc { font-size:14px; color:var(--muted); line-height:1.6; max-width:280px; }
+  .standby-status {
+    margin-top:24px; padding:10px 20px; background:var(--surface);
+    border:1px solid var(--border); border-radius:8px;
+    font-family:var(--font-mono); font-size:12px; color:var(--muted);
+  }
+
+  /* GPS LOCATION REQUEST */
+  .location-card {
+    margin: 16px; background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:16px;
+  }
+  .location-card h3 { font-size:16px; font-weight:700; margin-bottom:6px; }
+  .location-card p { font-size:12px; color:var(--muted); line-height:1.5; margin-bottom:12px; }
+  .btn-location {
+    width:100%; padding:12px; font-family:var(--font-display);
+    font-size:18px; letter-spacing:2px; border:none; border-radius:8px;
+    background:var(--blue,#00b4ff); color:#fff; cursor:pointer;
+  }
+
+  /* MAIN CONTENT */
+  #mainContent { flex:1; overflow-y:auto; display:none; }
+  #mainContent.show { display:block; }
+
+  /* ALERT BANNER — THE HERO */
+  .alert-banner {
+    margin:12px; border-radius:16px; overflow:hidden;
+    transition:all .5s cubic-bezier(.22,1,.36,1);
+    transform:scale(.95); opacity:.6;
+  }
+  .alert-banner.active { transform:scale(1); opacity:1; }
+
+  .banner-inner {
+    padding:20px; background:var(--surface); border:1px solid var(--border);
+  }
+  .banner-inner.level-approach { background:linear-gradient(135deg,#1a1200,#0e1018); border-color:rgba(255,149,0,.3); }
+  .banner-inner.level-near     { background:linear-gradient(135deg,#1a0008,#0e1018); border-color:rgba(255,28,56,.4); }
+  .banner-inner.level-imminent {
+    background:var(--red);
+    border-color:transparent;
+    animation:bangPulse .8s infinite;
+  }
+  .banner-inner.level-clear    { background:linear-gradient(135deg,#001a0e,#0e1018); border-color:rgba(0,232,122,.3); }
+  @keyframes bangPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,28,56,.6)} 50%{box-shadow:0 0 40px 10px rgba(255,28,56,.2)} }
+
+  .banner-emoji { font-size:56px; text-align:center; display:block; margin-bottom:8px; animation:bounce 1s infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .banner-title { font-family:var(--font-display); font-size:36px; letter-spacing:4px; text-align:center; line-height:1; }
+  .banner-subtitle { font-size:14px; text-align:center; opacity:.8; margin-top:4px; letter-spacing:1px; }
+  .banner-level {
+    text-align:center; margin:10px 0;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:3px; text-transform:uppercase;
+    opacity:.7;
+  }
+
+  .countdown-ring {
+    width:120px; height:120px; margin:12px auto;
+    position:relative;
+  }
+  .countdown-ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .countdown-ring svg circle { fill:none; stroke-width:6; }
+  .ring-track { stroke:rgba(255,255,255,.2); }
+  .ring-fill { stroke:#fff; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .countdown-num {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-family:var(--font-display); font-size:44px; color:#fff; line-height:1;
+  }
+  .countdown-label {
+    text-align:center; font-size:11px; letter-spacing:2px; text-transform:uppercase; opacity:.7; margin-top:-4px;
+  }
+
+  .banner-instruction {
+    text-align:center; font-size:16px; font-weight:700;
+    letter-spacing:1px; margin-top:10px;
+    background:rgba(255,255,255,.15); border-radius:8px; padding:10px;
+  }
+
+  /* ROUTE INFO BAR */
+  .route-bar {
+    margin: 0 12px 8px; padding:10px 14px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .rb-label { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+  .rb-val { font-family:var(--font-mono); font-size:14px; margin-top:2px; }
+
+  /* INTERSECTION LIST */
+  .inter-section { padding:0 12px 16px; }
+  .sec-title { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+  .inter-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-left:4px solid var(--border); border-radius:10px;
+    padding:10px 12px; margin-bottom:6px; transition:all .4s;
+    animation:slideIn .3s ease;
+  }
+  @keyframes slideIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+  .inter-card.approach { border-left-color:var(--amber); }
+  .inter-card.near     { border-left-color:var(--red); }
+  .inter-card.imminent { border-left-color:var(--red); background:rgba(255,28,56,.06); }
+  .inter-card.clear    { border-left-color:var(--green); opacity:.6; }
+  .ic-row { display:flex; justify-content:space-between; align-items:center; }
+  .ic-name { font-weight:700; font-size:14px; }
+  .ic-dist { font-family:var(--font-mono); font-size:14px; }
+  .ic-dist.approach { color:var(--amber); }
+  .ic-dist.near { color:var(--red); }
+  .ic-dist.imminent { color:var(--red); }
+  .ic-dist.clear { color:var(--green); }
+  .ic-badge {
+    font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    padding:2px 6px; border-radius:3px; margin-top:4px; display:inline-block;
+  }
+  .ic-badge.approach { background:rgba(255,149,0,.2); color:var(--amber); }
+  .ic-badge.near     { background:rgba(255,28,56,.2); color:var(--red); }
+  .ic-badge.imminent { background:var(--red); color:#fff; }
+  .ic-badge.clear    { background:rgba(0,232,122,.15); color:var(--green); }
+  .ic-msg { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  /* MY LOCATION BAR */
+  .loc-bar {
+    margin:0 12px 8px; padding:8px 12px;
+    background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:11px; color:var(--muted);
+  }
+
+  /* NOTIFICATION PERMISSION TOAST */
+  .notif-toast {
+    position:fixed; bottom:20px; left:12px; right:12px; z-index:999;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:flex; align-items:center; gap:12px;
+    transform:translateY(100px); opacity:0; transition:all .4s;
+  }
+  .notif-toast.show { transform:translateY(0); opacity:1; }
+  .notif-toast p { flex:1; font-size:13px; color:var(--muted); }
+  .notif-toast button {
+    font-family:var(--font-ui); font-size:13px; font-weight:700;
+    padding:6px 14px; border:none; border-radius:6px;
+    background:var(--blue,#00b4ff); color:#fff; cursor:pointer;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="logo">Clear<em>Path</em> <span style="font-size:16px;color:var(--muted)">Public</span></div>
+    <div class="sub">Emergency Vehicle Alert</div>
+  </div>
+  <div>
+    <div class="conn-row"><div class="dot" id="connDot"></div><span id="connLabel">CONNECTING</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:3px;text-align:right" id="clockEl"></div>
+  </div>
+</div>
+
+<!-- STANDBY SCREEN -->
+<div id="standbyScreen">
+  <div class="standby-icon">📡</div>
+  <div class="standby-title">MONITORING</div>
+  <div class="standby-desc">You'll be alerted when an emergency vehicle is approaching your area. Keep this page open while driving.</div>
+  <div class="standby-status" id="standbyStatus">⏳ No active mission</div>
+</div>
+
+<!-- MAIN CONTENT (shown when mission active) -->
+<div id="mainContent">
+
+  <!-- MY LOCATION -->
+  <div class="loc-bar">
+    <span>📍</span>
+    <span id="myLocLabel">Location: not available</span>
+  </div>
+
+  <!-- ACTIVE ALERT BANNER -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="banner-inner" id="bannerInner">
+      <span class="banner-emoji" id="bannerEmoji">🛡</span>
+      <div class="banner-title" id="bannerTitle">ALL CLEAR</div>
+      <div class="banner-subtitle" id="bannerSub">No emergency vehicles nearby</div>
+      <div class="banner-level" id="bannerLevel">MONITORING ACTIVE</div>
+    </div>
+  </div>
+
+  <!-- ROUTE INFO -->
+  <div class="route-bar">
+    <div>
+      <div class="rb-label">From</div>
+      <div class="rb-val">Victoria Hospital</div>
+    </div>
+    <div style="color:var(--muted);font-size:20px">→</div>
+    <div style="text-align:right">
+      <div class="rb-label">To</div>
+      <div class="rb-val">Manipal Hospital</div>
+    </div>
+  </div>
+
+  <!-- INTERSECTION LIST -->
+  <div class="inter-section">
+    <div class="sec-title">🚦 Corridor Status</div>
+    <div id="interList"></div>
+  </div>
+</div>
+
+<!-- NOTIFICATION TOAST -->
+<div class="notif-toast" id="notifToast">
+  <span style="font-size:22px">🔔</span>
+  <p>Enable notifications for alerts even when the screen is off</p>
+  <button onclick="requestNotifications()">Enable</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const SERVER_URL = window.location.origin;
+let socket;
+let myLat = null, myLng = null;
+let alertState = {};
+let highestLevel = 'none';
+let countdownTimer = null;
+let countdownSecs = 0;
+const CIRCUMFERENCE = 339; // 2π × 54
+
+// ── CLOCK ─────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clockEl').textContent =
+    new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}, 1000);
+
+// ── GEOLOCATION ───────────────────────────────────────────────
+navigator.geolocation?.watchPosition(
+  pos => {
+    myLat = pos.coords.latitude;
+    myLng = pos.coords.longitude;
+    document.getElementById('myLocLabel').textContent =
+      `${myLat.toFixed(4)}, ${myLng.toFixed(4)} · ±${Math.round(pos.coords.accuracy)}m`;
+  },
+  () => { document.getElementById('myLocLabel').textContent = 'Location unavailable'; },
+  { enableHighAccuracy: true, maximumAge: 5000 }
+);
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────
+function requestNotifications() {
+  Notification.requestPermission().then(perm => {
+    document.getElementById('notifToast').classList.remove('show');
+    if (perm === 'granted') showNativeNotif('ClearPath Active', 'You will be notified of approaching emergency vehicles');
+  });
+}
+
+function showNativeNotif(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/icon-192.png', tag: 'clearpath-alert' });
+  }
+}
+
+setTimeout(() => {
+  if (Notification.permission === 'default')
+    document.getElementById('notifToast').classList.add('show');
+}, 3000);
+
+// ── SOCKET ────────────────────────────────────────────────────
+function connect() {
+  socket = io(SERVER_URL, { reconnection: true });
+
+  socket.on('connect', () => {
+    socket.emit('join:public', { lat: myLat, lng: myLng });
+    setConn(true);
+  });
+  socket.on('disconnect', () => setConn(false));
+
+  socket.on('mission:state', (state) => {
+    const active = state.status === 'active';
+    document.getElementById('standbyScreen').style.display = active ? 'none' : 'flex';
+    document.getElementById('mainContent').classList.toggle('show', active);
+    document.getElementById('standbyStatus').textContent =
+      state.status === 'idle' ? '⏳ No active mission' :
+      state.status === 'paused' ? '⏸ Mission paused' :
+      state.status === 'complete' ? '✅ Mission complete' : '🟢 Mission active';
+  });
+
+  socket.on('mission:started', (state) => {
+    alertState = {};
+    document.getElementById('standbyScreen').style.display = 'none';
+    document.getElementById('mainContent').classList.add('show');
+    renderAll();
+    setBanner('none');
+  });
+
+  socket.on('mission:paused',   () => showStandby('⏸ Mission paused'));
+  socket.on('mission:complete', () => {
+    showStandby('✅ Ambulance arrived safely');
+    setBanner('complete');
+  });
+
+  socket.on('alerts:new', (alerts) => {
+    alerts.forEach(a => {
+      alertState[a.intersectionId] = a;
+    });
+    updateHighestLevel();
+    renderAll();
+    triggerUIForLevel(highestLevel, alerts[0]);
+  });
+}
+
+function setConn(ok) {
+  document.getElementById('connDot').classList.toggle('live', ok);
+  document.getElementById('connLabel').textContent = ok ? 'LIVE' : 'RECONNECTING';
+}
+
+function showStandby(msg) {
+  document.getElementById('standbyScreen').style.display = 'flex';
+  document.getElementById('mainContent').classList.remove('show');
+  document.getElementById('standbyStatus').textContent = msg;
+}
+
+// ── UI UPDATE ─────────────────────────────────────────────────
+function updateHighestLevel() {
+  const priority = { imminent:4, near:3, approach:2, clear:1, none:0 };
+  highestLevel = 'none';
+  for (const a of Object.values(alertState)) {
+    if ((priority[a.level] || 0) > (priority[highestLevel] || 0)) highestLevel = a.level;
+  }
+}
+
+function setBanner(level, alert) {
+  const banner = document.getElementById('alertBanner');
+  const inner  = document.getElementById('bannerInner');
+  const emoji  = document.getElementById('bannerEmoji');
+  const title  = document.getElementById('bannerTitle');
+  const sub    = document.getElementById('bannerSub');
+  const lvlEl  = document.getElementById('bannerLevel');
+
+  inner.className = 'banner-inner' + (level !== 'none' && level !== 'complete' ? ` level-${level}` : '');
+  banner.classList.toggle('active', level !== 'none');
+
+  const configs = {
+    none:     { e:'🛡', t:'ALL CLEAR', s:'No emergency vehicles nearby', l:'MONITORING ACTIVE' },
+    approach: { e:'⚠️', t:'APPROACH WARNING', s:`Ambulance near ${alert?.intersectionName}`, l:'PREPARE TO YIELD' },
+    near:     { e:'🚨', t:'PULL OVER NOW', s:`Ambulance ${alert?.distance || '--'}m away`, l:'URGENT — MOVE TO SIDE' },
+    imminent: { e:'🚑', t:'CLEAR THE WAY', s:`Ambulance arriving at ${alert?.intersectionName}`, l:'IMMINENT — STOP IMMEDIATELY' },
+    clear:    { e:'✅', t:'ROUTE CLEAR', s:'Ambulance has passed', l:'RESUME NORMAL DRIVING' },
+    complete: { e:'🏥', t:'MISSION COMPLETE', s:'Ambulance arrived safely', l:'ALL SIGNALS RESTORED' },
+  };
+  const cfg = configs[level] || configs.none;
+  emoji.textContent = cfg.e;
+  title.textContent = cfg.t;
+  sub.textContent   = cfg.s;
+  lvlEl.textContent = cfg.l;
+}
+
+function triggerUIForLevel(level, alert) {
+  setBanner(level, alert);
+
+  // Vibrate pattern
+  if (navigator.vibrate) {
+    if (level === 'imminent') navigator.vibrate([300, 100, 300, 100, 500]);
+    else if (level === 'near') navigator.vibrate([200, 100, 200]);
+    else if (level === 'approach') navigator.vibrate([100]);
+  }
+
+  // Native notification for high-priority
+  if (level === 'imminent') {
+    showNativeNotif('🚨 CLEAR THE WAY', `Ambulance arriving at ${alert?.intersectionName}`);
+  } else if (level === 'near') {
+    showNativeNotif('⚠ Pull Over Now', `Ambulance ${alert?.distance}m from ${alert?.intersectionName}`);
+  }
+}
+
+function renderAll() {
+  const list = document.getElementById('interList');
+  const levels = ['imminent','near','approach','clear'];
+  const sorted = Object.values(alertState).sort((a,b) =>
+    levels.indexOf(a.level) - levels.indexOf(b.level)
+  );
+  if (sorted.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Monitoring all intersections...</div>';
+    return;
+  }
+  list.innerHTML = sorted.map(a => {
+    const distText = a.level === 'clear' ? '✓ PASSED' : a.distance + 'm';
+    return `<div class="inter-card ${a.level}">
+      <div class="ic-row">
+        <div class="ic-name">🚦 ${a.intersectionName}</div>
+        <div class="ic-dist ${a.level}">${distText}</div>
+      </div>
+      <div class="ic-badge ${a.level}">${a.level}</div>
+      <div class="ic-msg">${a.message}</div>
+    </div>`;
+  }).join('');
+}
+
+connect();
+</script>
+</body>
+</html>

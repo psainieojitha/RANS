@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClearPath — Command Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red:#ff1c38; --red-dim:#7a0012; --amber:#ff9500;
+    --green:#00e87a; --blue:#00b4ff; --bg:#07080f;
+    --surface:#0e1018; --surface2:#141720; --border:#1e2230;
+    --text:#e8eaf0; --muted:#5a5f75;
+    --font-display:'Bebas Neue',sans-serif;
+    --font-ui:'Rajdhani',sans-serif;
+    --font-mono:'Share Tech Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-ui);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+  /* HEADER */
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 18px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:500}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:34px;height:34px;background:var(--red);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:18px;animation:logoGlow 2s infinite}
+  @keyframes logoGlow{0%,100%{box-shadow:0 0 0 0 rgba(255,28,56,.5)}50%{box-shadow:0 0 0 8px rgba(255,28,56,0)}}
+  .logo-text{font-family:var(--font-display);font-size:26px;letter-spacing:2px}
+  .logo-sub{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:-4px}
+  .header-mid{display:flex;align-items:center;gap:20px;font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  .conn-chip{display:flex;align-items:center;gap:5px}
+  .chip-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .chip-dot.on{background:var(--green);animation:blink 1.2s infinite}
+  .chip-dot.amber{background:var(--amber)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .header-actions{display:flex;gap:8px}
+  .btn{font-family:var(--font-ui);font-size:13px;font-weight:700;padding:7px 18px;border:none;border-radius:6px;cursor:pointer;transition:all .2s;letter-spacing:1px;text-transform:uppercase}
+  .btn-primary{background:var(--red);color:#fff}
+  .btn-primary:hover{background:#ff3a50;transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,28,56,.4)}
+  .btn-secondary{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .btn-secondary:hover{color:var(--text);border-color:var(--muted)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);font-size:11px;padding:7px 12px}
+  .btn-ghost:hover{color:var(--text)}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+  /* LAYOUT */
+  .layout{flex:1;display:grid;grid-template-columns:270px 1fr 290px;overflow:hidden}
+
+  /* LEFT */
+  .panel{background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+  .panel-left{border-right:1px solid var(--border)}
+  .panel-right{border-left:1px solid var(--border)}
+  .ptitle{font-family:var(--font-display);font-size:14px;letter-spacing:2px;color:var(--muted);padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+
+  /* VEHICLE CARD */
+  .vehicle-card{margin:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px}
+  .vcard-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .vcard-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--red-dim),#150002);border:1px solid var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .vcard-name{font-weight:700;font-size:15px}
+  .vcard-id{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .stat{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+  .stat-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+  .stat-val{font-family:var(--font-mono);font-size:17px;margin-top:2px}
+  .clr-red{color:var(--red)} .clr-grn{color:var(--green)} .clr-amb{color:var(--amber)} .clr-blue{color:var(--blue)}
+
+  /* PROGRESS */
+  .prog-card{margin:0 10px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px}
+  .prog-lbl{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+  .prog-track{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px}
+  .prog-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--amber));border-radius:3px;width:0%;transition:width .6s}
+  .prog-ends{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+
+  /* CONNECTIONS */
+  .conn-panel{margin:0 10px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px}
+  .conn-panel-title{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  .conn-rows{display:flex;flex-direction:column;gap:8px}
+  .conn-row-item{display:flex;align-items:center;justify-content:space-between}
+  .conn-row-label{display:flex;align-items:center;gap:8px;font-size:13px}
+  .conn-row-count{font-family:var(--font-mono);font-size:14px}
+  .qr-links{margin:0 10px 10px;display:flex;flex-direction:column;gap:6px}
+  .qr-link-btn{display:block;width:100%;text-align:center;padding:9px;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;transition:all .2s;text-decoration:none}
+  .qr-link-btn:hover{color:var(--text);border-color:var(--muted)}
+  .qr-link-btn.driver:hover{border-color:var(--red);color:var(--red)}
+  .qr-link-btn.public:hover{border-color:var(--blue);color:var(--blue)}
+
+  /* WAYPOINTS */
+  .wp-section{flex:1;overflow-y:auto;padding:0 10px 10px}
+  .wp-section::-webkit-scrollbar{width:3px}
+  .wp-section::-webkit-scrollbar-thumb{background:var(--border)}
+  .sec-title{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:10px 0 7px;border-bottom:1px solid var(--border);margin-bottom:7px}
+  .wp-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0}
+  .wp-line{display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0;padding-top:2px}
+  .wp-dot{width:9px;height:9px;border-radius:50%;background:var(--border);border:2px solid var(--muted);flex-shrink:0;transition:all .4s}
+  .wp-dot.start{background:var(--red);border-color:var(--red)}
+  .wp-dot.end{background:var(--blue);border-color:var(--blue)}
+  .wp-dot.passed{background:var(--green);border-color:var(--green)}
+  .wp-dot.active{background:var(--amber);border-color:var(--amber);animation:dotPulse .9s infinite}
+  @keyframes dotPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,149,0,.5)}50%{box-shadow:0 0 0 5px rgba(255,149,0,0)}}
+  .wp-conn{width:2px;flex:1;min-height:18px;background:var(--border);margin:2px 0;transition:background .5s}
+  .wp-conn.p{background:var(--green)}
+  .wp-info{flex:1}
+  .wp-name{font-size:12px;font-weight:600}
+  .wp-badge{font-size:9px;font-weight:700;letter-spacing:1px;padding:1px 5px;border-radius:2px;text-transform:uppercase;display:inline-block;margin-top:3px}
+  .wb-signal{background:rgba(255,149,0,.15);color:var(--amber);border:1px solid rgba(255,149,0,.3)}
+  .wb-passed{background:rgba(0,232,122,.1);color:var(--green);border:1px solid rgba(0,232,122,.2)}
+
+  /* MAP */
+  .map-wrap{position:relative;flex:1}
+  #map{width:100%;height:100%}
+  .map-top-overlay{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:500;display:none}
+  .map-top-banner{
+    background:var(--red);color:#fff;
+    font-family:var(--font-display);font-size:18px;letter-spacing:3px;
+    padding:9px 24px;border-radius:6px;text-align:center;
+    box-shadow:0 4px 24px rgba(255,28,56,.6);animation:shake .4s;
+  }
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+  .map-top-sub{font-family:var(--font-ui);font-size:11px;letter-spacing:2px;opacity:.85}
+
+  /* ALERT FEED */
+  .alert-feed{flex:1;overflow-y:auto;padding:8px}
+  .alert-feed::-webkit-scrollbar{width:3px}
+  .alert-feed::-webkit-scrollbar-thumb{background:var(--border)}
+  .alert-card{background:var(--surface2);border-radius:9px;padding:11px 13px;margin-bottom:6px;border-left:4px solid var(--border);animation:slideRight .3s ease}
+  @keyframes slideRight{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+  .alert-card.level-approach{border-left-color:var(--amber);background:rgba(255,149,0,.04)}
+  .alert-card.level-near{border-left-color:var(--red);background:rgba(255,28,56,.05)}
+  .alert-card.level-imminent{border-left-color:var(--red);background:rgba(255,28,56,.1);animation:alertBlink 1s infinite}
+  @keyframes alertBlink{0%,100%{opacity:1}50%{opacity:.7}}
+  .alert-card.level-clear{border-left-color:var(--green);background:rgba(0,232,122,.04)}
+  .ac-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+  .ac-inter{font-size:14px;font-weight:700}
+  .ac-time{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+  .ac-badge{font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;display:inline-block;margin-bottom:5px}
+  .ab-approach{background:rgba(255,149,0,.2);color:var(--amber)}
+  .ab-near{background:rgba(255,28,56,.2);color:var(--red)}
+  .ab-imminent{background:var(--red);color:#fff}
+  .ab-clear{background:rgba(0,232,122,.2);color:var(--green)}
+  .ac-msg{font-size:12px;color:var(--muted);line-height:1.4}
+  .ac-dist{font-family:var(--font-mono);font-size:18px;font-weight:700;margin-top:5px}
+
+  /* LOG */
+  .log-section{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+  .log-title{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .log-list{max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+  .log-list::-webkit-scrollbar{width:2px}
+  .log-list::-webkit-scrollbar-thumb{background:var(--border)}
+  .log-item{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--muted);animation:slideRight .3s}
+  .log-dot{width:5px;height:5px;border-radius:50%;background:var(--muted);flex-shrink:0;margin-top:4px}
+  .log-dot.r{background:var(--red)} .log-dot.g{background:var(--green)} .log-dot.a{background:var(--amber)}
+  .log-ts{font-family:var(--font-mono);font-size:10px;opacity:.5;white-space:nowrap}
+
+  /* IDLE HINT */
+  .idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center}
+  .idle .big{font-size:36px;opacity:.4}
+  .idle p{font-size:12px;color:var(--muted);line-height:1.5}
+
+  /* LEAFLET */
+  .leaflet-popup-content-wrapper{background:var(--surface2)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.5)!important}
+  .leaflet-popup-tip{background:var(--surface2)!important}
+  .amb-wrap{width:36px;height:36px;background:var(--red);border:2px solid #fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;animation:ambPulse 1.3s infinite}
+  @keyframes ambPulse{0%,100%{box-shadow:0 0 0 4px rgba(255,28,56,.3),0 0 0 8px rgba(255,28,56,.12)}50%{box-shadow:0 0 0 9px rgba(255,28,56,.15),0 0 0 18px rgba(255,28,56,.04)}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🚨</div>
+    <div>
+      <div class="logo-text">ClearPath</div>
+      <div class="logo-sub">Command Dashboard</div>
+    </div>
+  </div>
+  <div class="header-mid">
+    <div class="conn-chip"><div class="chip-dot" id="wsChip"></div><span id="wsLabel">CONNECTING</span></div>
+    <div class="conn-chip"><div class="chip-dot amber"></div><span id="missionBadge">STANDBY</span></div>
+    <span id="clockEl" style="opacity:.5"></span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="resetMission()">↺ Reset</button>
+    <button class="btn btn-secondary" id="btnStop" onclick="pauseMission()" disabled>■ Pause</button>
+    <button class="btn btn-primary"  id="btnStart" onclick="startMission()">▶ Start Mission</button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="panel panel-left">
+    <div class="ptitle">🚑 Vehicle Status</div>
+    <div class="vehicle-card">
+      <div class="vcard-header">
+        <div class="vcard-icon">🚑</div>
+        <div>
+          <div class="vcard-name">Ambulance Unit A-7</div>
+          <div class="vcard-id">KA-01-AB-2024 · BWSSB Dispatch</div>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-lbl">Speed</div><div class="stat-val clr-red" id="sSpeed">0 km/h</div></div>
+        <div class="stat"><div class="stat-lbl">ETA</div><div class="stat-val" id="sETA">--:--</div></div>
+        <div class="stat"><div class="stat-lbl">Distance Left</div><div class="stat-val" id="sDist">-- km</div></div>
+        <div class="stat"><div class="stat-lbl">Alerts Sent</div><div class="stat-val clr-grn" id="sAlerts">0</div></div>
+      </div>
+    </div>
+    <div class="prog-card">
+      <div class="prog-lbl">Route Progress</div>
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-ends"><span>Victoria Hosp.</span><span id="progPct">0%</span><span>Manipal Hosp.</span></div>
+    </div>
+    <!-- Connected users -->
+    <div class="conn-panel">
+      <div class="conn-panel-title">Connected Clients</div>
+      <div class="conn-rows">
+        <div class="conn-row-item">
+          <div class="conn-row-label"><span>🚑</span> Driver Apps</div>
+          <div class="conn-row-count clr-red" id="cntDriver">0</div>
+        </div>
+        <div class="conn-row-item">
+          <div class="conn-row-label"><span>📡</span> Dashboards</div>
+          <div class="conn-row-count clr-amb" id="cntDash">0</div>
+        </div>
+        <div class="conn-row-item">
+          <div class="conn-row-label"><span>📱</span> Public Users</div>
+          <div class="conn-row-count clr-blue" id="cntPublic">0</div>
+        </div>
+      </div>
+    </div>
+    <!-- Quick links -->
+    <div class="qr-links">
+      <a class="qr-link-btn driver" href="/driver" target="_blank">🚑 Open Driver App →</a>
+      <a class="qr-link-btn public" href="/alert" target="_blank">📱 Open Public Alert App →</a>
+    </div>
+    <!-- Waypoints -->
+    <div class="wp-section">
+      <div class="sec-title">📍 Route Waypoints</div>
+      <div id="wpList"></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-top-overlay" id="mapOverlay">
+      <div class="map-top-banner" id="mapBanner">
+        ⚠ EMERGENCY VEHICLE APPROACHING
+        <div class="map-top-sub" id="mapBannerSub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel panel-right">
+    <div class="ptitle">🔔 Alert Feed</div>
+    <div class="alert-feed" id="alertFeed">
+      <div class="idle"><div class="big">📡</div><p>Waiting for mission to start.<br>Press Start Mission or connect a Driver app.</p></div>
+    </div>
+    <div class="log-section">
+      <div class="log-title">System Log</div>
+      <div class="log-list" id="logList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── ROUTE & INTERSECTIONS ────────────────────────────────────
+const ROUTE = [
+  [12.9641,77.5953],[12.9638,77.5960],[12.9633,77.5968],[12.9627,77.5978],
+  [12.9620,77.5990],[12.9614,77.6003],[12.9611,77.6016],[12.9613,77.6030],
+  [12.9619,77.6042],[12.9628,77.6054],[12.9640,77.6065],[12.9655,77.6072],
+  [12.9670,77.6078],[12.9686,77.6083],[12.9700,77.6088],[12.9714,77.6093],
+  [12.9725,77.6103],[12.9733,77.6118],[12.9740,77.6138],[12.9745,77.6160],
+  [12.9748,77.6183],[12.9750,77.6208],[12.9753,77.6233],[12.9757,77.6258],
+  [12.9760,77.6283],[12.9763,77.6308],[12.9766,77.6333],[12.9769,77.6358],
+  [12.9772,77.6383],[12.9775,77.6408],
+];
+const INTERSECTIONS = [
+  {id:'richmond',   name:'Richmond Circle',   lat:12.9614,lng:77.6003},
+  {id:'lalbagh',    name:'Lal Bagh Gate',     lat:12.9619,lng:77.6042},
+  {id:'koramangala',name:'Koramangala Jn.',   lat:12.9670,lng:77.6078},
+  {id:'trinity',    name:'Trinity Circle',    lat:12.9725,lng:77.6103},
+  {id:'brigade',    name:'Brigade Road Jn.',  lat:12.9753,lng:77.6233},
+  {id:'hal',        name:'HAL Cross',         lat:12.9769,lng:77.6358},
+];
+const WAYPOINTS = [
+  {name:'Victoria Hospital', type:'start'},
+  {name:'Richmond Circle',   type:'signal', id:'richmond'},
+  {name:'Lal Bagh Gate',     type:'signal', id:'lalbagh'},
+  {name:'Koramangala Jn.',   type:'signal', id:'koramangala'},
+  {name:'Trinity Circle',    type:'signal', id:'trinity'},
+  {name:'Brigade Road Jn.',  type:'signal', id:'brigade'},
+  {name:'HAL Cross',         type:'signal', id:'hal'},
+  {name:'Manipal Hospital',  type:'end'},
+];
+
+// ── STATE ────────────────────────────────────────────────────
+let map, vehicleMarker, signalMarkers = {};
+let socket;
+let missionStatus = 'idle';
+let alertCount = 0;
+let intersectionStates = {}; // id → level
+let simInterval = null;
+let simIdx = 0;
+let totalAlerts = 0;
+
+// ── CLOCK ────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('clockEl').textContent =
+    new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}, 1000);
+
+// ── MAP INIT ─────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map', { center:[12.9700,77.6180], zoom:14, zoomControl:true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap, CartoDB', subdomains:'abcd', maxZoom:19
+  }).addTo(map);
+
+  L.polyline(ROUTE, { color:'#ff1c38', weight:4, opacity:.8, dashArray:'8,4' }).addTo(map);
+  L.circleMarker(ROUTE[0], { radius:9, fillColor:'#ff1c38', color:'#fff', weight:2, fillOpacity:1 })
+    .addTo(map).bindPopup('<b>🏥 Victoria Hospital</b>');
+  L.circleMarker(ROUTE[ROUTE.length-1], { radius:9, fillColor:'#00b4ff', color:'#fff', weight:2, fillOpacity:1 })
+    .addTo(map).bindPopup('<b>🏥 Manipal Hospital</b>');
+
+  INTERSECTIONS.forEach(i => {
+    signalMarkers[i.id] = L.marker([i.lat, i.lng], { icon:makeSignalIcon(i.name,'green') }).addTo(map);
+  });
+
+  const vIcon = L.divIcon({ className:'', html:'<div class="amb-wrap">🚑</div>', iconSize:[36,36], iconAnchor:[18,18] });
+  vehicleMarker = L.marker(ROUTE[0], { icon:vIcon, zIndexOffset:1000 }).addTo(map);
+
+  renderWaypoints();
+}
+
+function makeSignalIcon(name, state) {
+  const colors = { green:'#00e87a', amber:'#ff9500', red:'#ff1c38' };
+  const bgs    = { green:'#1a2f1a', amber:'#2f2200', red:'#2f0008' };
+  const c = colors[state] || colors.green;
+  const bg = bgs[state] || bgs.green;
+  const anim = state === 'amber' ? 'animation:alertBlink .8s infinite' : state === 'red' ? 'animation:alertBlink .5s infinite' : '';
+  return L.divIcon({
+    className:'',
+    html:`<div style="background:${bg};border:2px solid ${c};color:${c};border-radius:5px;padding:4px 8px;font-size:10px;font-family:'Share Tech Mono';white-space:nowrap;font-weight:700;${anim}">🚦 ${name}</div>`,
+    iconAnchor:[0,0]
+  });
+}
+
+// ── SOCKET ────────────────────────────────────────────────────
+function connectSocket() {
+  socket = io(window.location.origin, { reconnection:true });
+
+  socket.on('connect', () => {
+    socket.emit('join:dashboard');
+    setWS(true);
+  });
+  socket.on('disconnect', () => setWS(false));
+
+  socket.on('mission:state', applyMissionState);
+  socket.on('mission:started', (state) => {
+    applyMissionState(state);
+    addLog('g', 'Mission started');
+    document.getElementById('alertFeed').innerHTML = '';
+  });
+  socket.on('mission:paused', () => {
+    missionStatus = 'paused';
+    setMissionBadge('paused');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    addLog('a', 'Mission paused');
+  });
+  socket.on('mission:resumed', () => {
+    missionStatus = 'active';
+    setMissionBadge('active');
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+  });
+  socket.on('mission:complete', (data) => {
+    missionStatus = 'complete';
+    setMissionBadge('complete');
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    addLog('g', `✅ Mission complete · ${data.alertsSent} alerts sent`);
+    hideMapBanner();
+  });
+
+  socket.on('vehicle:telemetry', updateTelemetry);
+
+  socket.on('alerts:new', (alerts) => {
+    alerts.forEach(a => {
+      intersectionStates[a.intersectionId] = a.level;
+      totalAlerts++;
+      document.getElementById('sAlerts').textContent = totalAlerts;
+      addAlertCard(a);
+      updateSignalMarker(a.intersectionId, a.level);
+      renderWaypoints();
+      if (a.level === 'imminent') showMapBanner(a.intersectionName);
+      else if (a.level === 'clear') hideMapBanner();
+    });
+  });
+
+  socket.on('stats:update', (s) => {
+    document.getElementById('cntDriver').textContent = s.connectedDrivers;
+    document.getElementById('cntDash').textContent   = s.connectedDashboards;
+    document.getElementById('cntPublic').textContent  = s.connectedPublic;
+  });
+}
+
+function setWS(ok) {
+  document.getElementById('wsChip').classList.toggle('on', ok);
+  document.getElementById('wsLabel').textContent = ok ? 'CONNECTED' : 'RECONNECTING';
+}
+
+function applyMissionState(state) {
+  missionStatus = state.status;
+  setMissionBadge(state.status);
+  const active = state.status === 'active';
+  document.getElementById('btnStart').disabled = active;
+  document.getElementById('btnStop').disabled  = !active;
+  if (state.currentPosition) {
+    vehicleMarker.setLatLng([state.currentPosition.lat, state.currentPosition.lng]);
+  }
+}
+
+function setMissionBadge(status) {
+  const el = document.getElementById('missionBadge');
+  const map2 = { idle:'STANDBY', active:'ACTIVE', paused:'PAUSED', complete:'ARRIVED' };
+  el.textContent = (map2[status] || status).toUpperCase();
+}
+
+// ── TELEMETRY ────────────────────────────────────────────────
+function updateTelemetry(t) {
+  vehicleMarker.setLatLng([t.lat, t.lng]);
+  map.panTo([t.lat, t.lng], { animate:true, duration:.5 });
+
+  document.getElementById('sSpeed').textContent = t.speed + ' km/h';
+  document.getElementById('sDist').textContent = (t.distanceRemaining / 1000).toFixed(1) + ' km';
+
+  if (t.eta) {
+    const secsLeft = Math.max(0, Math.round((new Date(t.eta) - Date.now()) / 1000));
+    const mm = Math.floor(secsLeft/60).toString().padStart(2,'0');
+    const ss = (secsLeft%60).toString().padStart(2,'0');
+    document.getElementById('sETA').textContent = mm + ':' + ss;
+  }
+
+  // Progress
+  const TOTAL = 5200;
+  const pct = Math.min(100, Math.round((1 - t.distanceRemaining / TOTAL) * 100));
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progPct').textContent  = pct + '%';
+}
+
+// ── MISSION CONTROL ───────────────────────────────────────────
+function startMission() {
+  // If no driver connected, run local simulation
+  if (parseInt(document.getElementById('cntDriver').textContent) === 0) {
+    addLog('a', 'No driver connected — running simulation');
+    socket.emit('mission:start');
+    startLocalSim();
+  } else {
+    socket.emit('mission:start');
+  }
+}
+function pauseMission()  { socket.emit('mission:pause'); stopLocalSim(); }
+function resetMission()  {
+  socket.emit('mission:reset');
+  stopLocalSim(); simIdx = 0; totalAlerts = 0; intersectionStates = {};
+  document.getElementById('sSpeed').textContent = '0 km/h';
+  document.getElementById('sETA').textContent = '--:--';
+  document.getElementById('sDist').textContent = '-- km';
+  document.getElementById('sAlerts').textContent = '0';
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('progPct').textContent = '0%';
+  document.getElementById('alertFeed').innerHTML = '<div class="idle"><div class="big">📡</div><p>Waiting for mission to start.</p></div>';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  INTERSECTIONS.forEach(i => updateSignalMarker(i.id, 'none'));
+  vehicleMarker.setLatLng(ROUTE[0]);
+  renderWaypoints();
+  hideMapBanner();
+  addLog('a', 'Mission reset');
+}
+
+// ── LOCAL SIM (when no driver app is connected) ──────────────
+function startLocalSim() {
+  simIdx = 0;
+  simInterval = setInterval(() => {
+    if (simIdx >= ROUTE.length - 1) { stopLocalSim(); return; }
+    simIdx++;
+    const [lat, lng] = ROUTE[simIdx];
+    const speed = 45 + Math.sin(simIdx * 0.9) * 12 + Math.random() * 5;
+    socket.emit('driver:gps', { lat, lng, speed, heading:0, accuracy:5 });
+  }, 700);
+}
+function stopLocalSim() { clearInterval(simInterval); simInterval = null; }
+
+// ── SIGNAL MARKERS ────────────────────────────────────────────
+function updateSignalMarker(id, level) {
+  const inter = INTERSECTIONS.find(i => i.id === id);
+  if (!inter || !signalMarkers[id]) return;
+  const stateMap = { approach:'amber', near:'amber', imminent:'red', clear:'green', none:'green' };
+  signalMarkers[id].setIcon(makeSignalIcon(inter.name, stateMap[level] || 'green'));
+}
+
+// ── ALERT CARDS ───────────────────────────────────────────────
+function addAlertCard(alert) {
+  const feed = document.getElementById('alertFeed');
+  const labels = { approach:'Approaching', near:'Near', imminent:'IMMINENT', clear:'Cleared' };
+  const distText = alert.level === 'clear' ? '✓ Passed' : alert.distance + 'm away';
+  const now = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const card = document.createElement('div');
+  card.className = `alert-card level-${alert.level}`;
+  card.innerHTML = `<div class="ac-top"><div class="ac-inter">🚦 ${alert.intersectionName}</div><div class="ac-time">${now}</div></div>
+    <div class="ac-badge ab-${alert.level}">${labels[alert.level]}</div>
+    <div class="ac-msg">${alert.message}</div>
+    <div class="ac-dist clr-${alert.level === 'clear' ? 'grn' : alert.level === 'approach' ? 'amb' : 'red'}">${distText}</div>`;
+  feed.prepend(card);
+}
+
+// ── WAYPOINTS ─────────────────────────────────────────────────
+function renderWaypoints() {
+  const c = document.getElementById('wpList');
+  c.innerHTML = '';
+  WAYPOINTS.forEach((wp, i) => {
+    const isLast = i === WAYPOINTS.length-1;
+    const state = wp.id ? (intersectionStates[wp.id] || 'none') : 'none';
+    const passed = state === 'clear';
+    let dotCls = wp.type;
+    if (passed) dotCls = 'passed';
+    else if (['approach','near','imminent'].includes(state)) dotCls = 'active';
+
+    c.innerHTML += `<div class="wp-item">
+      <div class="wp-line">
+        <div class="wp-dot ${dotCls}"></div>
+        ${!isLast ? `<div class="wp-conn ${passed?'p':''}"></div>` : ''}
+      </div>
+      <div class="wp-info">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="wp-name">${wp.name}</span>
+          ${wp.type==='signal' ? `<span class="wp-badge ${passed?'wb-passed':'wb-signal'}">${passed?'✓ Clear':state==='imminent'?'⚠ IMMIN':state==='near'?'NEAR':state==='approach'?'APPR':'Signal'}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+}
+
+// ── MAP BANNER ────────────────────────────────────────────────
+let bannerTimeout;
+function showMapBanner(name) {
+  document.getElementById('mapBannerSub').textContent = name + ' — Ambulance arriving!';
+  document.getElementById('mapOverlay').style.display = 'block';
+  clearTimeout(bannerTimeout);
+  bannerTimeout = setTimeout(hideMapBanner, 5000);
+}
+function hideMapBanner() { document.getElementById('mapOverlay').style.display = 'none'; }
+
+// ── LOG ───────────────────────────────────────────────────────
+function addLog(type, msg) {
+  const list = document.getElementById('logList');
+  const ts = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `<div class="log-dot ${type}"></div><span style="flex:1">${msg}</span><span class="log-ts">${ts}</span>`;
+  list.prepend(item);
+  if (list.children.length > 30) list.lastChild.remove();
+}
+
+// ── BOOT ─────────────────────────────────────────────────────
+initMap();
+connectSocket();
+addLog('a', 'Dashboard loaded — awaiting mission');
+</script>
+</body>
+</html>
